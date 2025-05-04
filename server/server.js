@@ -20,6 +20,11 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+const allowedOrigins = [
+  'http://localhost:5173', // Vite dev server
+  'http://localhost:3000', // Alternative development port
+  'https://your-production-domain.com' // Production URL
+];
 
 // Initialize Express app
 const app = express();
@@ -33,9 +38,17 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/custom-wi
 .catch(err => console.error('MongoDB connection error:', err));
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: ['http://localhost:5173', 'http://127.0.0.1:5173'], // Include both localhost and 127.0.0.1
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  credentials: true,
+  optionsSuccessStatus: 200
+}));
+app.options('*', cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
 
 // Logging in development
 if (process.env.NODE_ENV !== 'production') {
@@ -59,6 +72,11 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
+// Temp simple test endpoint to verify basic connectivity
+app.get('/api/test', (req, res) => {
+  res.json({ message: 'API is working' });
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
@@ -66,5 +84,5 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
