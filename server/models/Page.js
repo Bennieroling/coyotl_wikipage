@@ -47,10 +47,4 @@ Page.beforeCreate(async (page) => {
   page.slug = slugify(page.title, { lower: true });
 });
 
-Page.beforeUpdate(async (page) => {
-  if (page.changed('title')) {
-    page.slug = slugify(page.title, { lower: true });
-  }
-});
-
 module.exports = Page;

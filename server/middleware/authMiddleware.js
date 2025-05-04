@@ -1,63 +1,43 @@
-// server/middleware/authMiddleware.js
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const { User } = require('../models');
 
-// JWT Secret - should be in environment variables in production
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const protect = async (req, res, next) => {
+  let token;
 
-// Protect routes
-exports.protect = async (req, res, next) => {
-  try {
-    let token;
-    
-    // Get token from Authorization header
-    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith('Bearer')
+  ) {
+    try {
+      // Get token from header
       token = req.headers.authorization.split(' ')[1];
+
+      // Verify token
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret');
+
+      // Get user from the token
+      req.user = await User.findByPk(decoded.id, {
+        attributes: { exclude: ['password'] },
+      });
+
+      next();
+    } catch (error) {
+      console.error(error);
+      res.status(401).json({ message: 'Not authorized, token failed' });
     }
-    
-    // Check if token exists
-    if (!token) {
-      return res.status(401).json({ error: 'Not authorized, no token' });
-    }
-    
-    // Verify token
-    const decoded = jwt.verify(token, JWT_SECRET);
-    
-    // Get user from token
-    const user = await User.findById(decoded.id);
-    if (!user) {
-      return res.status(401).json({ error: 'User not found' });
-    }
-    
-    // Set user in request
-    req.user = {
-      id: user._id,
-      username: user.username,
-      email: user.email,
-      role: user.role
-    };
-    
-    next();
-  } catch (error) {
-    console.error('Auth middleware error:', error);
-    res.status(401).json({ error: 'Not authorized' });
+  }
+
+  if (!token) {
+    res.status(401).json({ message: 'Not authorized, no token' });
   }
 };
 
-// Admin only routes
-exports.admin = (req, res, next) => {
+const admin = (req, res, next) => {
   if (req.user && req.user.role === 'admin') {
     next();
   } else {
-    res.status(403).json({ error: 'Not authorized as admin' });
+    res.status(401).json({ message: 'Not authorized as an admin' });
   }
 };
 
-// Editor or admin routes
-exports.editor = (req, res, next) => {
-  if (req.user && (req.user.role === 'admin' || req.user.role === 'editor')) {
-    next();
-  } else {
-    res.status(403).json({ error: 'Not authorized as editor' });
-  }
-};
+module.exports = { protect, admin };

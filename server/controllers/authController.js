@@ -1,7 +1,7 @@
 const { User } = require('../models');
 const jwt = require('jsonwebtoken');
 
-// Register a new user.
+// Register a new user
 const registerUser = async (req, res) => {
   const { username, email, password } = req.body;
 
@@ -36,6 +36,47 @@ const registerUser = async (req, res) => {
   }
 };
 
+// User login
+const loginUser = async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    // Find user by email
+    const user = await User.findOne({ where: { email } });
+
+    if (user && (await user.matchPassword(password))) {
+      res.json({
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        token: generateToken(user.id),
+      });
+    } else {
+      res.status(401).json({ message: 'Invalid email or password' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get user profile
+const getUserProfile = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id, {
+      attributes: { exclude: ['password'] },
+    });
+
+    if (user) {
+      res.json(user);
+    } else {
+      res.status(404).json({ message: 'User not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // Generate JWT
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET || 'your_jwt_secret', {
@@ -43,4 +84,4 @@ const generateToken = (id) => {
   });
 };
 
-module.exports = { registerUser };
+module.exports = { registerUser, loginUser, getUserProfile };
