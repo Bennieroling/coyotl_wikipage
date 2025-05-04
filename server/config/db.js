@@ -1,5 +1,6 @@
 const { Sequelize } = require('sequelize');
 
+// Update these values based on your PostgreSQL setup
 const sequelize = new Sequelize('custom_wiki', 'postgres', 'your_password', {
   host: 'localhost',
   dialect: 'postgres',
