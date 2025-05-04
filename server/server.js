@@ -22,6 +22,8 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
+console.log('Server starting up...');
+console.log('Checking auth controller:', require('./controllers/authController'));
 app.use('/api/auth', authRoutes);
 app.use('/api/pages', pageRoutes);
 app.use('/api/files', fileRoutes);

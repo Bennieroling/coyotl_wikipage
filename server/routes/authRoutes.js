@@ -1,12 +1,15 @@
-// server/routes/authRoutes.js
 const express = require('express');
 const router = express.Router();
-const authController = require('../controllers/authController');
-const authMiddleware = require('../middleware/authMiddleware');
+const { registerUser, loginUser, getUserProfile } = require('../controllers/authController');
+const { protect } = require('../middleware/authMiddleware');
 
-// Auth routes
-router.post('/register', authController.register);
-router.post('/login', authController.login);
-router.get('/user', authMiddleware.protect, authController.getUser);
+// Check that these functions exist in the controller
+console.log('Register function:', !!registerUser);
+console.log('Login function:', !!loginUser);
+console.log('Get User Profile function:', !!getUserProfile);
+
+router.post('/register', registerUser);
+router.post('/login', loginUser);
+router.get('/user', protect, getUserProfile);
 
 module.exports = router;
