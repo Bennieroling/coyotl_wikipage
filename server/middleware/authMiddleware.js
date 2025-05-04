@@ -1,6 +1,6 @@
 // server/middleware/authMiddleware.js
 const jwt = require('jsonwebtoken');
-const User = require('./models/User');
+const User = require('../models/User');
 
 // JWT Secret - should be in environment variables in production
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
