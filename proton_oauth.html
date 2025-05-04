@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proton OAuth Module Documentation</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        h1 {
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            border-bottom: 1px solid #bdc3c7;
+            padding-bottom: 5px;
+            margin-top: 30px;
+        }
+        code {
+            background-color: #f7f7f7;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9em;
+        }
+        pre {
+            background-color: #f7f7f7;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9em;
+            border-left: 4px solid #3498db;
+        }
+        .function {
+            margin-bottom: 30px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            border-left: 4px solid #2ecc71;
+        }
+        .parameter {
+            margin-left: 20px;
+            margin-bottom: 10px;
+        }
+        .returns {
+            margin-top: 15px;
+            font-style: italic;
+        }
+        .note {
+            background-color: #fff8dc;
+            padding: 10px;
+            border-left: 4px solid #f1c40f;
+            margin: 15px 0;
+        }
+        .warning {
+            background-color: #ffebee;
+            padding: 10px;
+            border-left: 4px solid #e74c3c;
+            margin: 15px 0;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .section {
+            margin-top: 40px;
+        }
+        .flowchart {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .flowchart img {
+            max-width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <h1>Proton OAuth Module Documentation</h1>
+    
+    <div class="section">
+        <h2>Overview</h2>
+        <p>The <code>proton_oauth.py</code> module manages OAuth authentication with the Proton API. It handles token retrieval, validation, and automatic renewal when tokens expire. This module is designed to work with environment variables stored in a <code>.env</code> file for secure credential management.</p>
+        
+        <div class="note">
+            <strong>Note:</strong> This module is a critical dependency for other applications that interact with the Proton API, such as <code>proton.py</code> which fetches phone numbers.
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Prerequisites</h2>
+        <p>Before using this module, you need:</p>
+        <ul>
+            <li>Python 3.6 or higher</li>
+            <li>A <code>.env</code> file in the same directory with the following variables:
+                <ul>
+                    <li><code>PROTON_CLIENTID</code> - Your Proton API client ID</li>
+                    <li><code>PROTON_SECRET</code> - Your Proton API client secret</li>
+                    <li><code>PROTON_SUBSCRIPTIONKEY</code> - Your Proton API subscription key</li>
+                </ul>
+            </li>
+            <li>The following Python packages:
+                <ul>
+                    <li><code>requests</code></li>
+                    <li><code>python-dotenv</code></li>
+                </ul>
+            </li>
+        </ul>
+        
+        <p>You can install the required packages using:</p>
+        <pre>pip install requests python-dotenv</pre>
+    </div>
+
+    <div class="section">
+        <h2>Usage</h2>
+        <p>The main function to use in your applications is <code>get_token()</code>, which returns a valid token for Proton API authentication.</p>
+        
+        <h3>Basic Usage</h3>
+        <pre>
+from proton_oauth import get_token
+
+# Get a valid token
+token = get_token()
+
+if token:
+    # Use the token for API requests
+    headers = {
+        "Authorization": token,
+        "Content-Type": "application/json"
+    }
+    # Make your API request with these headers
+else:
+    # Handle error - couldn't get a valid token
+    print("Failed to obtain a valid token")</pre>
+        
+        <h3>Running Directly</h3>
+        <p>You can also run the module directly to manually refresh the token:</p>
+        <pre>python proton_oauth.py</pre>
+        <p>This will check the current token status and either use the existing token or request a new one based on expiration.</p>
+    </div>
+
+    <div class="section">
+        <h2>Function Reference</h2>
+        
+        <div class="function">
+            <h3><code>initialize_oauth()</code></h3>
+            <p>Initializes OAuth credentials by loading environment variables from a <code>.env</code> file.</p>
+            <div class="returns">
+                <strong>Returns:</strong> <code>True</code> if all required credentials are available, <code>False</code> otherwise.
+            </div>
+        </div>
+        
+        <div class="function">
+            <h3><code>get_token_expiry()</code></h3>
+            <p>Retrieves the current token and its expiry time from environment variables.</p>
+            <div class="returns">
+                <strong>Returns:</strong> A tuple of <code>(token, expiry_timestamp)</code> or <code>(None, None)</code> if not available.
+            </div>
+        </div>
+        
+        <div class="function">
+            <h3><code>is_token_valid(expiry_timestamp, buffer_seconds=300)</code></h3>
+            <p>Checks if a token is still valid with a buffer time before expiration.</p>
+            <div class="parameter">
+                <strong>Parameters:</strong>
+                <ul>
+                    <li><code>expiry_timestamp</code> (float): The timestamp when the token expires</li>
+                    <li><code>buffer_seconds</code> (int, optional): Buffer time in seconds before expiration. Default is 300 (5 minutes).</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Returns:</strong> Boolean indicating if the token is still valid.
+            </div>
+        </div>
+        
+        <div class="function">
+            <h3><code>request_new_token()</code></h3>
+            <p>Requests a new token from the Proton API and updates the <code>.env</code> file with the new token and expiry.</p>
+            <div class="returns">
+                <strong>Returns:</strong> Tuple of <code>(token, expiry_timestamp)</code> or <code>(None, None)</code> if the request failed.
+            </div>
+        </div>
+        
+        <div class="function">
+            <h3><code>get_token()</code></h3>
+            <p>Main function to get a valid Proton API token. If the token is expired or close to expiration, it will request a new one.</p>
+            <div class="returns">
+                <strong>Returns:</strong> A valid token string, or <code>None</code> if unable to obtain a token.
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Authentication Flow</h2>
+        <p>The module follows this authentication flow:</p>
+        <ol>
+            <li>Check if required environment variables exist</li>
+            <li>Check if a token already exists in the environment</li>
+            <li>If a token exists, check if it's still valid (not expired or about to expire)</li>
+            <li>If the token is valid, return it</li>
+            <li>If no token exists or the token is expired/about to expire, request a new token from the API</li>
+            <li>Save the new token and its expiry time to the <code>.env</code> file</li>
+            <li>Return the new token</li>
+        </ol>
+
+        <div class="flowchart">
+            <svg width="800" height="550" viewBox="0 0 800 550">
+                <!-- Styles -->
+                <defs>
+                    <style>
+                        .box { fill: #f0f8ff; stroke: #3498db; stroke-width: 2; }
+                        .diamond { fill: #fff8dc; stroke: #f1c40f; stroke-width: 2; }
+                        .start-end { fill: #e8f5e9; stroke: #2ecc71; stroke-width: 2; rx: 20; ry: 20; }
+                        .arrow { fill: none; stroke: #666; stroke-width: 2; marker-end: url(#arrowhead); }
+                        .text { font-family: Arial; font-size: 12px; text-anchor: middle; fill: #333; }
+                        .small-text { font-family: Arial; font-size: 10px; text-anchor: middle; fill: #333; }
+                        .yes-text { font-family: Arial; font-size: 11px; fill: #27ae60; }
+                        .no-text { font-family: Arial; font-size: 11px; fill: #e74c3c; }
+                    </style>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#666" />
+                    </marker>
+                </defs>
+                
+                <!-- Boxes -->
+                <!-- Start -->
+                <rect x="350" y="20" width="100" height="40" class="start-end" />
+                <text x="400" y="43" class="text">Start</text>
+                
+                <!-- Check env variables -->
+                <rect x="320" y="90" width="160" height="40" class="box" />
+                <text x="400" y="113" class="text">Check Environment Variables</text>
+                
+                <!-- Variables exist? -->
+                <polygon points="400,160 440,200 400,240 360,200" class="diamond" />
+                <text x="400" y="203" class="text">Variables Exist?</text>
+                
+                <!-- Get existing token -->
+                <rect x="320" y="270" width="160" height="40" class="box" />
+                <text x="400" y="293" class="text">Get Existing Token & Expiry</text>
+                
+                <!-- Token exists? -->
+                <polygon points="400,340 440,380 400,420 360,380" class="diamond" />
+                <text x="400" y="383" class="text">Token Exists?</text>
+                
+                <!-- Token valid? -->
+                <polygon points="570,380 610,420 570,460 530,420" class="diamond" />
+                <text x="570" y="423" class="text">Token Valid?</text>
+                
+                <!-- Request new token -->
+                <rect x="320" y="450" width="160" height="40" class="box" />
+                <text x="400" y="473" class="text">Request New Token</text>
+                
+                <!-- End -->
+                <rect x="350" y="520" width="100" height="40" class="start-end" />
+                <text x="400" y="543" class="text">Return Token</text>
+                
+                <!-- Failure end -->
+                <rect x="150" y="230" width="120" height="40" class="start-end" />
+                <text x="210" y="253" class="text">Return None</text>
+                
+                <!-- Arrows -->
+                <path d="M 400 60 L 400 90" class="arrow" />
+                <path d="M 400 130 L 400 160" class="arrow" />
+                <path d="M 400 240 L 400 270" class="arrow" />
+                <path d="M 400 310 L 400 340" class="arrow" />
+                <path d="M 400 420 L 400 450" class="arrow" />
+                <path d="M 400 490 L 400 520" class="arrow" />
+                
+                <path d="M 360 200 L 210 200 L 210 230" class="arrow" />
+                <path d="M 360 380 L 210 380 L 210 270" class="arrow" />
+                
+                <path d="M 440 380 L 530 380" class="arrow" />
+                <path d="M 570 460 L 570 470 L 480 470" class="arrow" />
+                <path d="M 610 420 L 650 420 L 650 530 L 450 530" class="arrow" />
+                
+                <!-- Yes/No labels -->
+                <text x="410" y="255" class="yes-text">Yes</text>
+                <text x="340" y="195" class="no-text">No</text>
+                
+                <text x="410" y="435" class="yes-text">Yes</text>
+                <text x="340" y="375" class="no-text">No</text>
+                
+                <text x="620" y="415" class="yes-text">Yes</text>
+                <text x="565" y="485" class="no-text">No</text>
+                
+                <!-- Additional info boxes -->
+                <rect x="630" y="150" width="130" height="60" rx="5" ry="5" fill="#eaf7ff" stroke="#3498db" stroke-width="1" />
+                <text x="695" y="170" class="small-text">Checks for:</text>
+                <text x="695" y="185" class="small-text">PROTON_CLIENTID</text>
+                <text x="695" y="200" class="small-text">PROTON_SECRET</text>
+                <text x="695" y="215" class="small-text">PROTON_SUBSCRIPTIONKEY</text>
+                <path d="M 440 110 L 630 180" stroke="#3498db" stroke-width="1" stroke-dasharray="5,3" />
+                
+                <rect x="630" y="280" width="130" height="40" rx="5" ry="5" fill="#eaf7ff" stroke="#3498db" stroke-width="1" />
+                <text x="695" y="300" class="small-text">From .env file</text>
+                <text x="695" y="315" class="small-text">PROTON_TOKEN & EXPIRY</text>
+                <path d="M 440 290 L 630 300" stroke="#3498db" stroke-width="1" stroke-dasharray="5,3" />
+                
+                <rect x="90" y="380" width="120" height="50" rx="5" ry="5" fill="#f9ebea" stroke="#e74c3c" stroke-width="1" />
+                <text x="150" y="400" class="small-text">Returns None when:</text>
+                <text x="150" y="415" class="small-text">- Missing credentials</text>
+                <text x="150" y="430" class="small-text">- API request fails</text>
+            </svg>
+            <p><em>Authentication Flow Diagram</em></p>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Error Handling</h2>
+        <p>The module handles various error scenarios:</p>
+        <table>
+            <tr>
+                <th>Error Scenario</th>
+                <th>Handling Approach</th>
+            </tr>
+            <tr>
+                <td>Missing environment variables</td>
+                <td>Prints specific error messages about which variables are missing and returns <code>False</code> from <code>initialize_oauth()</code></td>
+            </tr>
+            <tr>
+                <td>Invalid token expiry format</td>
+                <td>Returns <code>(None, None)</code> from <code>get_token_expiry()</code></td>
+            </tr>
+            <tr>
+                <td>API request failures</td>
+                <td>Catches exceptions, prints error details, and returns <code>(None, None)</code> from <code>request_new_token()</code></td>
+            </tr>
+            <tr>
+                <td>Non-200 response codes</td>
+                <td>Prints status code and response content</td>
+            </tr>
+            <tr>
+                <td>Missing token in API response</td>
+                <td>Prints error message and returns <code>(None, None)</code></td>
+            </tr>
+            <tr>
+                <td>Missing expiry time in API response</td>
+                <td>Uses a default 2-hour expiry time</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>Environment Variables</h2>
+        <p>The module uses and modifies the following environment variables:</p>
+        <table>
+            <tr>
+                <th>Variable</th>
+                <th>Description</th>
+                <th>Required</th>
+            </tr>
+            <tr>
+                <td><code>PROTON_CLIENTID</code></td>
+                <td>Your Proton API client ID</td>
+                <td>Yes</td>
+            </tr>
+            <tr>
+                <td><code>PROTON_SECRET</code></td>
+                <td>Your Proton API client secret</td>
+                <td>Yes</td>
+            </tr>
+            <tr>
+                <td><code>PROTON_SUBSCRIPTIONKEY</code></td>
+                <td>Your Proton API subscription key</td>
+                <td>Yes</td>
+            </tr>
+            <tr>
+                <td><code>PROTON_TOKEN</code></td>
+                <td>The current OAuth token (created/updated by the module)</td>
+                <td>No (created if not present)</td>
+            </tr>
+            <tr>
+                <td><code>PROTON_TOKEN_EXPIRY</code></td>
+                <td>The expiry timestamp of the current token (created/updated by the module)</td>
+                <td>No (created if not present)</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>API Reference</h2>
+        <p>The module interacts with the following Proton API endpoint:</p>
+        <pre>https://api.proton-graph.cloud/admin/AuthenticateOIDC/{client_id}?secret={secret}</pre>
+        <p>Headers required:</p>
+        <pre>Ocp-Apim-Subscription-Key: {subscription_key}</pre>
+        
+        <h3>Response Structure</h3>
+        <p>A successful response will contain:</p>
+        <pre>
+{
+    "token": "your-oauth-token-here",
+    "expiresAt": "2023-06-01T12:00:00Z" // ISO format datetime
+}</pre>
+    </div>
+
+    <div class="section">
+        <h2>Troubleshooting</h2>
+        <div class="warning">
+            <strong>Common Issues:</strong>
+            <ol>
+                <li>
+                    <strong>Missing Environment Variables</strong>
+                    <p>Ensure you have a <code>.env</code> file with all required variables. You'll see specific error messages about which variables are missing.</p>
+                </li>
+                <li>
+                    <strong>Authentication Failures</strong>
+                    <p>Check that your client ID, secret, and subscription key are correct. The module will print the API response which may contain more specific error information.</p>
+                </li>
+                <li>
+                    <strong>Token Expiration Issues</strong>
+                    <p>If you're experiencing unexpected token expirations, you may need to adjust the <code>buffer_seconds</code> parameter in <code>is_token_valid</code> function calls.</p>
+                </li>
+            </ol>
+        </div>
+        
+        <h3>Debugging Tips</h3>
+        <ul>
+            <li>Run the module directly (<code>python proton_oauth.py</code>) to check token status and force a refresh if needed</li>
+            <li>Set <code>TOKEN = get_token()</code> at the beginning of any script that uses the Proton API</li>
+            <li>Check the console output for detailed error messages when token requests fail</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>Dependencies</h2>
+        <p>This module depends on:</p>
+        <ul>
+            <li><code>os</code> - For accessing environment variables</li>
+            <li><code>time</code> - For timestamp comparisons</li>
+            <li><code>requests</code> - For making HTTP requests to the API</li>
+            <li><code>datetime</code> - For date/time handling</li>
+            <li><code>dotenv</code> - For loading and updating environment variables</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>Best Practices</h2>
+        <ul>
+            <li>Never hardcode credentials in your scripts; always use the <code>.env</code> file</li>
+            <li>Include <code>proton_oauth.py</code> in the same directory as scripts that need Proton API access</li>
+            <li>Always check if <code>get_token()</code> returns <code>None</code> and handle that case appropriately</li>
+            <li>Consider implementing additional logging for production environments</li>
+            <li>Periodically check for token validity in long-running applications</li>
+        </ul>
+    </div>
+
+    <footer style="margin-top: 50px; border-top: 1px solid #ddd; padding-top: 20px; color: #777; font-size: 0.9em;">
+        <p>Last updated: May 4, 2025</p>
+    </footer>
+</body>
+</html>
