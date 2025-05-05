@@ -20,7 +20,7 @@ export const AuthProvider = ({ children }) => {
           apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
           
           // Get current user data
-          const response = await apiClient.get('/api/auth/user');
+          const response = await apiClient.get('/auth/user');
           setUser(response.data);
         }
       } catch (err) {
@@ -41,7 +41,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('token', token);
       apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       
-      const response = await apiClient.get('/api/auth/user');
+      const response = await apiClient.get('/auth/user');
       setUser(response.data);
       setError(null);
       

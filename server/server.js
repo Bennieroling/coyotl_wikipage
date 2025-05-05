@@ -1,20 +1,32 @@
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
-const { connectDB } = require('./config/db');
-const { initializeDatabase } = require('./config/initDb');
+const { connectDB, sequelize } = require('./config/db'); // Import both connectDB and sequelize
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
-const pageRoutes = require('./routes/pageRoutes');
-const fileRoutes = require('./routes/fileRoutes');
+let pageRoutes, fileRoutes;
 
-// Connect to database
-connectDB();
+// Try to import routes or use placeholders
+try {
+  pageRoutes = require('./routes/pageRoutes');
+} catch (error) {
+  console.warn('Warning: pageRoutes not found. Using placeholder.');
+  const router = express.Router();
+  router.get('/', (req, res) => res.json({ message: 'Page routes not implemented yet' }));
+  pageRoutes = router;
+}
 
-// Initialize database with initial data (comment out in production after first run)
-// initializeDatabase();
+try {
+  fileRoutes = require('./routes/fileRoutes');
+} catch (error) {
+  console.warn('Warning: fileRoutes not found. Using placeholder.');
+  const router = express.Router();
+  router.get('/', (req, res) => res.json({ message: 'File routes not implemented yet' }));
+  fileRoutes = router;
+}
 
+// Create Express app
 const app = express();
 
 // Middleware
@@ -22,18 +34,49 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
-console.log('Server starting up...');
-console.log('Checking auth controller:', require('./controllers/authController'));
-app.use('/api/auth', authRoutes);
-app.use('/api/pages', pageRoutes);
-app.use('/api/files', fileRoutes);
+app.use('/auth', authRoutes);
+app.use('/pages', pageRoutes);
+app.use('/files', fileRoutes);
+
+// Create uploads directory if it doesn't exist
+const fs = require('fs');
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  console.log('Created uploads directory');
+}
+
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Error handler middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ message: 'Server Error' });
+  console.error('Error details:', err);
+  res.status(500).json({ 
+    message: 'Server Error', 
+    details: err.message 
+  });
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// Initialize server
+async function initializeServer() {
+  try {
+    // Connect to database
+    await connectDB();
+    
+    // Sync all models
+    await sequelize.sync({ force: true });
+    console.log('Database tables created successfully');
+    
+    // Start the server
+    const PORT = process.env.PORT || 5001;
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error('Error initializing server:', error);
+    process.exit(1);
+  }
+}
+
+// Start the server
+initializeServer();

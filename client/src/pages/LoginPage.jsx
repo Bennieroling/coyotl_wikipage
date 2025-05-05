@@ -31,7 +31,7 @@ const LoginPage = () => {
       setLoading(true);
       setError(null);
       
-      const response = await apiClient.post('/api/auth/login', {
+      const response = await apiClient.post('/auth/login', {
         email: formData.email,
         password: formData.password
       });

@@ -1,7 +1,7 @@
 const { Sequelize } = require('sequelize');
 
 // Update these values based on your PostgreSQL setup
-const sequelize = new Sequelize('custom_wiki', 'postgres', 'your_password', {
+const sequelize = new Sequelize('custom_wiki', 'benvandijk', '', {
   host: 'localhost',
   dialect: 'postgres',
   logging: false, // Set to console.log to see SQL queries
