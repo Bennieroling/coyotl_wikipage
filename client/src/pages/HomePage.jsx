@@ -1,25 +1,37 @@
 // client/src/pages/HomePage.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import apiClient from '../services/apiClient';
+import api from '../services/apiClient';
+import { useAuth } from '../hooks/useAuth'; // Import auth hook
 
 const HomePage = () => {
-  const { user } = useAuth();
   const [recentPages, setRecentPages] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { user } = useAuth(); // Get current user from auth context
 
   useEffect(() => {
     const fetchRecentPages = async () => {
       try {
-        setLoading(true);
-        const response = await apiClient.get('/api/pages?limit=5&sort=updatedAt');
-        setRecentPages(response.data.pages || []);
-        setLoading(false);
+        const response = await api.getPages();
+        
+        // Check if response data exists and is an array
+        if (response.data && Array.isArray(response.data)) {
+          // Sort pages by updatedAt date (most recent first)
+          const sortedPages = response.data.sort((a, b) => {
+            return new Date(b.updatedAt) - new Date(a.updatedAt);
+          });
+          
+          // Take only the 5 most recent pages
+          setRecentPages(sortedPages.slice(0, 5));
+        } else {
+          // Handle case where response exists but data is not as expected
+          setRecentPages([]);
+        }
       } catch (err) {
         console.error('Error fetching recent pages:', err);
-        setError('Error loading recent pages');
+        // Don't set an error for empty pages - that's a valid state
+        setRecentPages([]);
+      } finally {
         setLoading(false);
       }
     };
@@ -27,108 +39,64 @@ const HomePage = () => {
     fetchRecentPages();
   }, []);
 
+  if (loading) return <div className="text-center p-8">Loading...</div>;
+
   return (
     <div className="container mx-auto p-4">
-      <div className="text-center py-8 bg-white rounded-lg shadow-sm mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-4">
-          Welcome to Custom Wiki
-        </h1>
-        <p className="text-gray-600 max-w-2xl mx-auto mb-6">
-          A flexible wiki platform with complete HTML customization capabilities, built with React, 
-          Node.js, and MongoDB. Create and share knowledge with powerful editing tools.
+      <h1 className="text-3xl font-bold mb-6">Welcome to Festina Lente Wiki</h1>
+      
+      <div className="bg-white p-6 rounded shadow mb-8">
+        <h2 className="text-xl font-semibold mb-4">Get Started</h2>
+        <p className="mb-4">
+          Welcome to your custom wiki! Here you can create, view, and edit wiki pages.
         </p>
         
         {user ? (
-          <div className="flex justify-center space-x-4">
-            <Link
-              to="/pages"
-              className="px-6 py-3 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-            >
-              Browse Pages
-            </Link>
-            <Link
-              to="/pages/new"
-              className="px-6 py-3 border border-blue-500 text-blue-500 rounded-md hover:bg-blue-50"
-            >
-              Create Page
-            </Link>
-          </div>
+          <Link
+            to="/pages/new"
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            Create New Page
+          </Link>
         ) : (
-          <div className="flex justify-center space-x-4">
+          <div>
+            <p className="mb-2 text-yellow-600">
+              Please log in to create or edit pages.
+            </p>
             <Link
               to="/login"
-              className="px-6 py-3 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
             >
-              Login
-            </Link>
-            <Link
-              to="/register"
-              className="px-6 py-3 border border-blue-500 text-blue-500 rounded-md hover:bg-blue-50"
-            >
-              Register
+              Log In
             </Link>
           </div>
         )}
       </div>
-
-      <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">
-          Recently Updated Pages
-        </h2>
+      
+      <div className="bg-white p-6 rounded shadow mb-8">
+        <h2 className="text-xl font-semibold mb-4">Recent Pages</h2>
         
-        {loading ? (
-          <div className="text-center py-8">
-            <p className="text-gray-500">Loading recent pages...</p>
-          </div>
-        ) : error ? (
-          <div className="text-center py-8">
-            <p className="text-red-500">{error}</p>
-          </div>
-        ) : recentPages.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-gray-500">No pages have been created yet.</p>
-            {user && (
-              <Link
-                to="/pages/new"
-                className="inline-block mt-4 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-              >
-                Create the First Page
-              </Link>
-            )}
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-100">
+        {recentPages.length > 0 ? (
+          <ul className="divide-y">
             {recentPages.map((page) => (
-              <div key={page._id} className="py-4 flex justify-between items-center">
-                <div>
-                  <Link 
-                    to={`/pages/${page.slug}`}
-                    className="text-lg font-medium text-blue-600 hover:underline"
-                  >
-                    {page.title}
-                  </Link>
-                  {page.category && (
-                    <span className="ml-3 text-sm bg-gray-100 text-gray-600 px-2 py-1 rounded">
-                      {page.category}
-                    </span>
-                  )}
-                  <p className="text-sm text-gray-500 mt-1">
-                    Last updated on {new Date(page.updatedAt).toLocaleDateString()} by{' '}
-                    {page.updatedBy?.username || 'Unknown'}
-                  </p>
-                </div>
+              <li key={page.id} className="py-3">
                 <Link
                   to={`/pages/${page.slug}`}
-                  className="px-3 py-1 border border-gray-300 text-gray-600 rounded hover:bg-gray-50"
+                  className="text-blue-600 hover:text-blue-800 font-medium"
                 >
-                  View
+                  {page.title}
                 </Link>
-              </div>
+                <p className="text-sm text-gray-500">
+                  Last updated: {new Date(page.updatedAt).toLocaleDateString()}
+                </p>
+              </li>
             ))}
-          </div>
+          </ul>
+        ) : (
+          <p>No pages found. {user ? 'Create your first page!' : 'Please log in to create pages.'}</p>
         )}
       </div>
-
+    
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
         <div className="bg-white rounded-lg shadow-sm p-6">
           <h2 className="text-xl font-bold text-gray-800 mb-4">
@@ -207,6 +175,9 @@ const HomePage = () => {
         </div>
       </div>
     </div>
+    
+
+    
   );
 };
 

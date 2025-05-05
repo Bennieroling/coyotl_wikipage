@@ -1,189 +1,199 @@
-// src/pages/PageEditPage.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { pageService } from '../services/api';
+import apiClient from '../services/apiClient';
+import { useAuth } from '../hooks/useAuth';
 import WikiEditor from '../components/editor/WikiEditor';
-
 
 const PageEditPage = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  
+  const [page, setPage] = useState(null);
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
+  const [tags, setTags] = useState([]);
+  const [category, setCategory] = useState('');
+  const [isPublished, setIsPublished] = useState(true);
+  const [versionComment, setVersionComment] = useState('');
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
-  const [formData, setFormData] = useState({
-    title: '',
-    content: '',
-    category: '',
-    tags: '',
-    isPublished: false
-  });
 
-  // Fetch page data if editing an existing page
   useEffect(() => {
-    if (slug && slug !== 'new') {
-      const fetchPage = async () => {
-        try {
-          const response = await pageService.getPage(slug);
-          const { title, content, category, tags, isPublished } = response.data;
-          setFormData({
-            title,
-            content,
-            category: category || '',
-            tags: tags?.join(', ') || '',
-            isPublished: isPublished || false
-          });
-        } catch (err) {
-          setError('Failed to fetch page data');
-          console.error(err);
-        } finally {
-          setLoading(false);
-        }
-      };
+    const fetchPage = async () => {
+      try {
+        setLoading(true);
+        const response = await apiClient.getPage(slug);
+        const pageData = response.data;
+        setPage(pageData);
+        setTitle(pageData.title);
+        setContent(pageData.content);
+        setTags(pageData.tags || []);
+        setCategory(pageData.category || 'Uncategorized');
+        setIsPublished(pageData.isPublished);
+      } catch (err) {
+        setError('Failed to load page');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
+    if (slug !== 'new') {
       fetchPage();
     } else {
       setLoading(false);
     }
   }, [slug]);
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData({
-      ...formData,
-      [name]: type === 'checkbox' ? checked : value
-    });
-  };
+  const handleSave = async () => {
+    if (!title) {
+      alert('Title is required');
+      return;
+    }
 
-  const handleContentChange = (content) => {
-    setFormData({ ...formData, content });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
     try {
-      // Prepare the data
-      const pageData = {
-        ...formData,
-        tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()) : []
-      };
+      setSaving(true);
       
-      // Create or update the page
-      if (slug && slug !== 'new') {
-        await pageService.updatePage(slug, pageData);
+      if (slug === 'new') {
+        // Create new page
+        const response = await apiClient.createPage({
+          title,
+          content,
+          tags,
+          category,
+          isPublished
+        });
+        
+        navigate(`/pages/${response.data.slug}`);
       } else {
-        await pageService.createPage(pageData);
+        // Update existing page
+        const pageData = {
+          title,
+          content,
+          tags,
+          category,
+          isPublished
+        };
+        
+        // If we have a version comment, first create a version
+        if (versionComment && page) {
+          await apiClient.createVersion({
+            pageId: page.id,
+            content: page.content,
+            comment: versionComment
+          });
+        }
+        
+        await apiClient.updatePage(slug, pageData);
+        navigate(`/pages/${slug}`);
       }
-      
-      // Redirect to the page list
-      navigate('/pages');
     } catch (err) {
-      setError('Failed to save the page');
+      setError('Failed to save page');
       console.error(err);
+    } finally {
+      setSaving(false);
     }
   };
 
-  if (loading) {
-    return <div className="flex justify-center p-8">Loading...</div>;
-  }
+  const handleCancel = () => {
+    if (slug === 'new') {
+      navigate('/');
+    } else {
+      navigate(`/pages/${slug}`);
+    }
+  };
+
+  if (loading) return <div className="text-center p-8">Loading page...</div>;
+  if (error) return <div className="text-center p-8 text-red-500">{error}</div>;
+  if (!user) return <div className="text-center p-8">You must be logged in to edit pages</div>;
 
   return (
-    <div className="container p-4 mx-auto">
-      <h1 className="mb-6 text-2xl font-bold">
-        {slug && slug !== 'new' ? 'Edit Page' : 'Create New Page'}
+    <div className="container mx-auto p-4">
+      <h1 className="text-3xl font-bold mb-4">
+        {slug === 'new' ? 'Create New Page' : `Edit: ${title}`}
       </h1>
       
-      {error && (
-        <div className="p-3 mb-4 text-sm text-red-700 bg-red-100 rounded">
-          {error}
-        </div>
-      )}
-      
-      <form onSubmit={handleSubmit}>
+      <div className="bg-white p-6 rounded shadow">
         <div className="mb-4">
-          <label htmlFor="title" className="block mb-2 font-medium">
-            Title
-          </label>
+          <label className="block text-sm font-medium text-gray-700">Title</label>
           <input
             type="text"
-            id="title"
-            name="title"
-            value={formData.title}
-            onChange={handleChange}
-            className="w-full p-2 border rounded"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded"
             required
           />
         </div>
         
         <div className="mb-4">
-          <label htmlFor="content" className="block mb-2 font-medium">
-            Content
-          </label>
-          <WikiEditor 
-            content={formData.content} 
-            onChange={handleContentChange} 
+          <label className="block text-sm font-medium text-gray-700">Content</label>
+          <WikiEditor content={content} onChange={setContent} />
+        </div>
+        
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700">Category</label>
+          <input
+            type="text"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded"
           />
         </div>
         
         <div className="mb-4">
-          <label htmlFor="category" className="block mb-2 font-medium">
-            Category
-          </label>
+          <label className="block text-sm font-medium text-gray-700">Tags (comma separated)</label>
           <input
             type="text"
-            id="category"
-            name="category"
-            value={formData.category}
-            onChange={handleChange}
-            className="w-full p-2 border rounded"
+            value={tags.join(', ')}
+            onChange={(e) => setTags(e.target.value.split(',').map(tag => tag.trim()))}
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded"
           />
         </div>
         
         <div className="mb-4">
-          <label htmlFor="tags" className="block mb-2 font-medium">
-            Tags (comma separated)
-          </label>
-          <input
-            type="text"
-            id="tags"
-            name="tags"
-            value={formData.tags}
-            onChange={handleChange}
-            className="w-full p-2 border rounded"
-            placeholder="tag1, tag2, tag3"
-          />
-        </div>
-        
-        <div className="flex items-center mb-6">
-          <input
-            type="checkbox"
-            id="isPublished"
-            name="isPublished"
-            checked={formData.isPublished}
-            onChange={handleChange}
-            className="w-4 h-4 mr-2"
-          />
-          <label htmlFor="isPublished">
-            Publish page
+          <label className="flex items-center">
+            <input
+              type="checkbox"
+              checked={isPublished}
+              onChange={(e) => setIsPublished(e.target.checked)}
+              className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+            />
+            <span className="ml-2 text-sm text-gray-700">Publish this page</span>
           </label>
         </div>
         
-        <div className="flex space-x-2">
+        {slug !== 'new' && (
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700">Version Comment (optional)</label>
+            <input
+              type="text"
+              value={versionComment}
+              onChange={(e) => setVersionComment(e.target.value)}
+              placeholder="Describe your changes"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded"
+            />
+          </div>
+        )}
+        
+        <div className="flex justify-end space-x-2">
           <button
-            type="submit"
-            className="px-4 py-2 text-white bg-blue-500 rounded hover:bg-blue-600"
-          >
-            Save
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+            onClick={handleCancel}
+            className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
+            disabled={saving}
           >
             Cancel
           </button>
+          <button
+            onClick={handleSave}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-blue-300"
+            disabled={saving}
+          >
+            {saving ? 'Saving...' : 'Save'}
+          </button>
         </div>
-      </form>
+      </div>
     </div>
   );
 };

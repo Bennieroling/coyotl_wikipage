@@ -26,9 +26,3 @@ const Version = sequelize.define(
 );
 
 module.exports = Version;
-
-// Add to model associations in models/index.js:
-// Page.hasMany(Version, { foreignKey: 'pageId' });
-// Version.belongsTo(Page, { foreignKey: 'pageId' });
-// User.hasMany(Version, { foreignKey: 'createdBy' });
-// Version.belongsTo(User, { foreignKey: 'createdBy' });

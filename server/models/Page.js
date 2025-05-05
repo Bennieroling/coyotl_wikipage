@@ -47,4 +47,21 @@ Page.beforeCreate(async (page) => {
   page.slug = slugify(page.title, { lower: true });
 });
 
+const setupFullTextSearch = async () => {
+  try {
+    // Create a full-text search index on title and content
+    await sequelize.query(`
+      CREATE EXTENSION IF NOT EXISTS pg_trgm;
+      
+      CREATE INDEX IF NOT EXISTS pages_title_content_idx 
+      ON "Pages" USING GIN (
+        to_tsvector('english', "title" || ' ' || "content")
+      );
+    `);
+    console.log('Full-text search index created for Pages');
+  } catch (error) {
+    console.error('Failed to create full-text search index:', error);
+  }
+};
+
 module.exports = Page;

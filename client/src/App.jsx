@@ -11,6 +11,8 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import FileManagerPage from './pages/FileManagerPage';
 import NotFoundPage from './pages/NotFoundPage';
+import SearchResultsPage from './pages/SearchResultsPage';
+
 
 function App() {
   return (
@@ -27,6 +29,8 @@ function App() {
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/files" element={<FileManagerPage />} />
             <Route path="*" element={<NotFoundPage />} />
+            <Route path="/search" element={<SearchResultsPage />} />
+
           </Routes>
         </Layout>
       </Router>

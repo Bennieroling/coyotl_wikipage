@@ -2,6 +2,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import SearchBar from '../search/SearchBar';
+
 
 const Header = () => {
   const { user, logout } = useAuth();
@@ -19,11 +21,14 @@ const Header = () => {
 
   return (
     <header className="bg-white shadow">
-      <div className="container mx-auto px-4">
+           <div className="container mx-auto px-4">
         <div className="flex justify-between items-center py-4">
           <Link to="/" className="text-xl font-bold text-blue-600">
-            Custom Wiki
+            Festina Lente Wiki
           </Link>
+          <div className="w-full md:w-1/3 mb-4 md:mb-0">
+            <SearchBar />
+          </div>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex space-x-4 items-center">

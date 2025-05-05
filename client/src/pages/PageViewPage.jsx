@@ -1,24 +1,29 @@
-// src/pages/PageViewPage.jsx
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { pageService } from '../services/api';
+import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import apiClient from '../services/apiClient';
 import { useAuth } from '../hooks/useAuth';
+import VersionHistory from '../components/versions/versionHistory';
+import VersionCompare from '../components/versions/VersionCompare';
 
 const PageViewPage = () => {
   const { slug } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  
   const [page, setPage] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { isEditor } = useAuth();
-  const navigate = useNavigate();
+  const [showVersions, setShowVersions] = useState(false);
+  const [selectedVersion, setSelectedVersion] = useState(null);
 
   useEffect(() => {
     const fetchPage = async () => {
       try {
-        const response = await pageService.getPage(slug);
+        setLoading(true);
+        const response = await apiClient.getPage(slug);
         setPage(response.data);
       } catch (err) {
-        setError('Page not found');
+        setError('Failed to load page');
         console.error(err);
       } finally {
         setLoading(false);
@@ -28,62 +33,87 @@ const PageViewPage = () => {
     fetchPage();
   }, [slug]);
 
-  const handleDelete = async () => {
-    if (window.confirm('Are you sure you want to delete this page?')) {
-      try {
-        await pageService.deletePage(slug);
-        navigate('/pages');
-      } catch (err) {
-        setError('Failed to delete the page');
-        console.error(err);
-      }
+  const handleEdit = () => {
+    navigate(`/pages/${slug}/edit`);
+  };
+
+  const handleToggleVersions = () => {
+    setShowVersions(!showVersions);
+    setSelectedVersion(null);
+  };
+
+  const handleVersionSelect = (version) => {
+    setSelectedVersion(version);
+  };
+
+  const handleRestoreVersion = async (versionId) => {
+    try {
+      await apiClient.restoreVersion(versionId);
+      // Reload the page to show the restored content
+      const response = await apiClient.getPage(slug);
+      setPage(response.data);
+      setSelectedVersion(null);
+    } catch (err) {
+      console.error('Failed to restore version', err);
+      alert('Failed to restore version');
     }
   };
 
-  if (loading) {
-    return <div className="flex justify-center p-8">Loading...</div>;
-  }
-
-  if (error) {
-    return <div className="p-4 text-red-700">{error}</div>;
-  }
+  if (loading) return <div className="text-center p-8">Loading page...</div>;
+  if (error) return <div className="text-center p-8 text-red-500">{error}</div>;
+  if (!page) return <div className="text-center p-8">Page not found</div>;
 
   return (
-    <div className="container p-4 mx-auto">
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">{page.title}</h1>
-          {isEditor && (
-            <div className="flex space-x-2">
-              <Link
-                to={`/pages/${slug}/edit`}
-                className="px-4 py-2 text-white bg-blue-500 rounded hover:bg-blue-600"
-              >
-                Edit
-              </Link>
-              <button
-                onClick={handleDelete}
-                className="px-4 py-2 text-white bg-red-500 rounded hover:bg-red-600"
-              >
-                Delete
-              </button>
-            </div>
+    <div className="container mx-auto p-4">
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-3xl font-bold">{page.title}</h1>
+        <div className="space-x-2">
+          {user && (
+            <button
+              onClick={handleEdit}
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              Edit
+            </button>
           )}
-        </div>
-        <div className="mt-2 text-sm text-gray-500">
-          <span>Last updated: {new Date(page.updatedAt).toLocaleString()}</span>
-          {page.category && (
-            <span className="ml-4">Category: {page.category}</span>
-          )}
+          <button
+            onClick={handleToggleVersions}
+            className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+          >
+            {showVersions ? 'Hide History' : 'Show History'}
+          </button>
         </div>
       </div>
 
-      <div className="p-6 mt-4 bg-white rounded shadow-sm">
-        {/* This is where we'll render the page content */}
-        <div 
-          className="prose max-w-none"
-          dangerouslySetInnerHTML={{ __html: page.content }}
-        />
+      {showVersions && (
+        <div className="mb-6">
+          <VersionHistory 
+            pageId={page.id} 
+            onVersionSelect={handleVersionSelect} 
+          />
+        </div>
+      )}
+
+      {selectedVersion && (
+        <div className="mb-6">
+          <VersionCompare
+            currentContent={page.content}
+            versionContent={selectedVersion.content}
+            onRestore={handleRestoreVersion}
+            versionId={selectedVersion.id}
+          />
+        </div>
+      )}
+
+      <div className="bg-white p-6 rounded shadow">
+        <div dangerouslySetInnerHTML={{ __html: page.content }} />
+      </div>
+      
+      <div className="mt-4 text-sm text-gray-500">
+        <p>
+          Last updated: {new Date(page.updatedAt).toLocaleString()} by{' '}
+          {page.updater ? page.updater.username : 'Unknown'}
+        </p>
       </div>
     </div>
   );

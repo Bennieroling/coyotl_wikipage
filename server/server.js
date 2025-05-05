@@ -2,6 +2,9 @@ const express = require('express');
 const path = require('path');
 const cors = require('cors');
 const { connectDB, sequelize } = require('./config/db'); // Import both connectDB and sequelize
+const versionRoutes = require('./routes/versionRoutes');
+const searchRoutes = require('./routes/searchRoutes');
+const { setupFullTextSearch } = require('./models/Page');
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
@@ -37,6 +40,9 @@ app.use(express.json());
 app.use('/auth', authRoutes);
 app.use('/pages', pageRoutes);
 app.use('/files', fileRoutes);
+app.use('/versions', versionRoutes);
+app.use('/search', searchRoutes);
+
 
 // Create uploads directory if it doesn't exist
 const fs = require('fs');
@@ -77,6 +83,18 @@ async function initializeServer() {
     process.exit(1);
   }
 }
+const initializeServer = async () => {
+  try {
+    await connectDB();
+    // After models are synced
+    await setupFullTextSearch();
+    
+    // Rest of your server initialization
+  } catch (error) {
+    console.error('Server initialization error:', error);
+  }
+};
+
 
 // Start the server
 initializeServer();
