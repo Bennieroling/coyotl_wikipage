@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import apiClient from '../services/apiClient';
+import { authAPI } from '../services/apiClient';
 
 const RegisterPage = () => {
   const navigate = useNavigate();
@@ -47,7 +47,7 @@ const RegisterPage = () => {
         password: formData.password 
       });
       
-      const response = await apiClient.post('/auth/register', {
+      const response = await authAPI.register({
         username: formData.username,
         email: formData.email,
         password: formData.password

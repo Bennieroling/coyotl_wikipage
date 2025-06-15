@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import apiClient from '../services/apiClient';
+import { pageAPI } from '../services/apiClient';
 
 const PageListPage = () => {
   const { user } = useAuth();
@@ -50,7 +50,7 @@ const PageListPage = () => {
         params.append('category', categoryFilter);
       }
       
-      const response = await apiClient.get(`/api/pages?${params.toString()}`);
+      const response = await pageAPI.getPages(params.toString());
       
       setPages(response.data.pages || []);
       setPagination(response.data.pagination || { page: 1, pages: 1, total: 0 });

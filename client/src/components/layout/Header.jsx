@@ -46,6 +46,9 @@ const Header = () => {
                 <Link to="/files" className="px-3 py-2 text-gray-700 hover:text-blue-600">
                   Files
                 </Link>
+                <Link to="/html-docs" className="px-3 py-2 text-gray-700 hover:text-blue-600">
+  HTML Docs
+</Link>
               </>
             )}
             
@@ -143,6 +146,13 @@ const Header = () => {
                 >
                   Files
                 </Link>
+                <Link
+  to="/html-docs"
+  className="block px-3 py-2 text-gray-700 hover:text-blue-600"
+  onClick={() => setMobileMenuOpen(false)}
+>
+  HTML Docs
+</Link>
               </>
             )}
             

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import api from '../services/apiClient';
+import { searchAPI } from '../services/apiClient';
 import SearchBar from '../components/search/SearchBar';
 
 const SearchResultsPage = () => {
@@ -21,7 +21,7 @@ const SearchResultsPage = () => {
           return;
         }
         
-        const response = await api.searchWiki(query);
+        const response = await searchAPI.search(query);
         setResults(response.data);
       } catch (err) {
         console.error('Search error:', err);

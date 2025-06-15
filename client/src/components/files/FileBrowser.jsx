@@ -1,6 +1,6 @@
 // client/src/components/files/FileBrowser.jsx
 import React, { useState, useEffect } from 'react';
-import apiClient from '../../services/apiClient';
+import { fileAPI } from '../../services/apiClient';
 import FileUploader from './FileUploader';
 
 const FileBrowser = ({ onSelectFile, showUploader = true }) => {
@@ -21,7 +21,7 @@ const FileBrowser = ({ onSelectFile, showUploader = true }) => {
   const fetchFiles = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get(`/api/files?page=${pagination.page}`);
+      const response = await fileAPI.getFiles(`page=${pagination.page}`);
       setFiles(response.data.files);
       setPagination(response.data.pagination);
       setLoading(false);
@@ -39,7 +39,7 @@ const FileBrowser = ({ onSelectFile, showUploader = true }) => {
   const handleDeleteFile = async (fileId) => {
     if (window.confirm('Are you sure you want to delete this file?')) {
       try {
-        await apiClient.delete(`/api/files/${fileId}`);
+        await fileAPI.deleteFile(fileId);
         setFiles(prevFiles => prevFiles.filter(file => file._id !== fileId));
       } catch (err) {
         console.error('Error deleting file:', err);

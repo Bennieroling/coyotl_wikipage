@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import apiClient from '../../services/apiClient';
+import { versionAPI } from '../../services/apiClient';
 import { format } from 'date-fns';
 
 const VersionHistory = ({ pageId, onVersionSelect }) => {
@@ -11,7 +11,7 @@ const VersionHistory = ({ pageId, onVersionSelect }) => {
     const fetchVersions = async () => {
       try {
         setLoading(true);
-        const response = await apiClient.getVersionsByPageId(pageId);
+        const response = await versionAPI.getVersionsByPageId(pageId);
         setVersions(response.data);
       } catch (err) {
         setError('Failed to load version history');

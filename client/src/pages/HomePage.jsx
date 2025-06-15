@@ -1,7 +1,7 @@
 // client/src/pages/HomePage.jsx
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import api from '../services/apiClient';
+import { pageAPI } from '../services/apiClient';
 import { useAuth } from '../hooks/useAuth'; // Import auth hook
 
 const HomePage = () => {
@@ -12,7 +12,7 @@ const HomePage = () => {
   useEffect(() => {
     const fetchRecentPages = async () => {
       try {
-        const response = await api.getPages();
+        const response = await pageAPI.getPages();
         
         // Check if response data exists and is an array
         if (response.data && Array.isArray(response.data)) {

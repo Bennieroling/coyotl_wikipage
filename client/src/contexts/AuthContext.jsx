@@ -1,6 +1,6 @@
 // client/src/contexts/AuthContext.jsx
 import React, { createContext, useState, useEffect } from 'react';
-import apiClient from '../services/apiClient';
+import { authAPI } from '../services/apiClient';
 
 const AuthContext = createContext();
 
@@ -16,18 +16,14 @@ export const AuthProvider = ({ children }) => {
         const token = localStorage.getItem('token');
         
         if (token) {
-          // Set token in default headers
-          apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-          
-          // Get current user data
-          const response = await apiClient.get('/auth/user');
+          // Get current user data - the authAPI already handles the token
+          const response = await authAPI.getUser();
           setUser(response.data);
         }
       } catch (err) {
         console.error('Auth check error:', err);
         // Clear token if invalid
         localStorage.removeItem('token');
-        delete apiClient.defaults.headers.common['Authorization'];
       } finally {
         setLoading(false);
       }
@@ -39,9 +35,8 @@ export const AuthProvider = ({ children }) => {
   const login = async (token) => {
     try {
       localStorage.setItem('token', token);
-      apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       
-      const response = await apiClient.get('/auth/user');
+      const response = await authAPI.getUser();
       setUser(response.data);
       setError(null);
       
@@ -55,7 +50,6 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('token');
-    delete apiClient.defaults.headers.common['Authorization'];
     setUser(null);
   };
 
@@ -67,3 +61,4 @@ export const AuthProvider = ({ children }) => {
 };
 
 export default AuthContext;
+EOF

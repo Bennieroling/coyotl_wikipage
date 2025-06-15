@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import apiClient from '../services/apiClient';
+import { pageAPI } from '../services/apiClient';
 import { useAuth } from '../hooks/useAuth';
 import VersionHistory from '../components/versions/versionHistory';
 import VersionCompare from '../components/versions/VersionCompare';
@@ -20,7 +20,7 @@ const PageViewPage = () => {
     const fetchPage = async () => {
       try {
         setLoading(true);
-        const response = await apiClient.getPage(slug);
+        const response = await pageAPI.getPage(slug);
         setPage(response.data);
       } catch (err) {
         setError('Failed to load page');
@@ -50,7 +50,7 @@ const PageViewPage = () => {
     try {
       await apiClient.restoreVersion(versionId);
       // Reload the page to show the restored content
-      const response = await apiClient.getPage(slug);
+      const response = await pageAPI.getPage(slug);
       setPage(response.data);
       setSelectedVersion(null);
     } catch (err) {

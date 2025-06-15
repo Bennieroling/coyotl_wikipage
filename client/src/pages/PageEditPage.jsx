@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import apiClient from '../services/apiClient';
+import { pageAPI } from '../services/apiClient';
 import { useAuth } from '../hooks/useAuth';
 import WikiEditor from '../components/editor/WikiEditor';
 
@@ -24,7 +24,7 @@ const PageEditPage = () => {
     const fetchPage = async () => {
       try {
         setLoading(true);
-        const response = await apiClient.getPage(slug);
+        const response = await pageAPI.getPage(slug);
         const pageData = response.data;
         setPage(pageData);
         setTitle(pageData.title);

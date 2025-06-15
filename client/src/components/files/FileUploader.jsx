@@ -1,6 +1,6 @@
 // client/src/components/files/FileUploader.jsx
 import React, { useState, useRef } from 'react';
-import apiClient from '../../services/apiClient';
+import { fileAPI } from '../../services/apiClient';
 
 const FileUploader = ({ onUploadSuccess }) => {
   const [file, setFile] = useState(null);
@@ -56,7 +56,7 @@ const FileUploader = ({ onUploadSuccess }) => {
         },
       };
 
-      const response = await apiClient.post('/api/files/upload', formData, config);
+      const response = await fileAPI.uploadFile(formData, config);
       
       // Reset form
       setFile(null);

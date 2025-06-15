@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import apiClient from '../services/apiClient';
+import { authAPI } from '../services/apiClient';
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -31,7 +31,7 @@ const LoginPage = () => {
       setLoading(true);
       setError(null);
       
-      const response = await apiClient.post('/auth/login', {
+      const response = await authAPI.login({
         email: formData.email,
         password: formData.password
       });

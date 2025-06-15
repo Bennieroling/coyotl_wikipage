@@ -12,6 +12,8 @@ import RegisterPage from './pages/RegisterPage';
 import FileManagerPage from './pages/FileManagerPage';
 import NotFoundPage from './pages/NotFoundPage';
 import SearchResultsPage from './pages/SearchResultsPage';
+import HtmlDocsBrowser from './components/docs/HtmlDocsBrowser';
+
 
 
 function App() {
@@ -28,9 +30,9 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/files" element={<FileManagerPage />} />
-            <Route path="*" element={<NotFoundPage />} />
             <Route path="/search" element={<SearchResultsPage />} />
-
+            <Route path="/html-docs" element={<HtmlDocsBrowser />} />
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </Layout>
       </Router>

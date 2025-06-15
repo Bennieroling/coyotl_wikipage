@@ -1,103 +1,75 @@
+// client/src/services/apiClient.js
 import axios from 'axios';
 
-// Create axios instance with base URL
 const apiClient = axios.create({
-  baseURL: '/api',
+  baseURL: '/api', // This will be proxied to port 8000 by Vite
   headers: {
-    'Content-Type': 'application/json'
-  }
+    'Content-Type': 'application/json',
+  },
 });
 
-// Add request interceptor for auth token
+// Request interceptor to add auth token
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Add response interceptor for error handling
+// Response interceptor for error handling
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Handle specific error cases
-    if (error.response) {
-      // Server responded with a status code outside of 2xx range
-      if (error.response.status === 401) {
-        // Unauthorized - clear token and redirect to login
-        localStorage.removeItem('token');
-        // Could redirect to login page here if needed
-      }
+    if (error.response?.status === 401) {
+      // Unauthorized - remove invalid token
+      localStorage.removeItem('token');
+      // Optionally redirect to login
+      window.location.href = '/login';
     }
     return Promise.reject(error);
   }
 );
 
-// Auth endpoints
-const registerUser = (userData) => apiClient.post('/auth/register', userData);
-const loginUser = (credentials) => apiClient.post('/auth/login', credentials);
-const getUserProfile = () => apiClient.get('/auth/user');
-
-// Page endpoints
-const getPages = () => apiClient.get('/pages');
-const getPage = (slug) => apiClient.get(`/pages/${slug}`);
-const createPage = (pageData) => apiClient.post('/pages', pageData);
-const updatePage = (slug, pageData) => apiClient.put(`/pages/${slug}`, pageData);
-const deletePage = (slug) => apiClient.delete(`/pages/${slug}`);
-
-// File endpoints
-const uploadFile = (formData) => {
-  return apiClient.post('/files', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
-  });
-};
-const getFiles = () => apiClient.get('/files');
-const getFile = (id) => apiClient.get(`/files/${id}`);
-const deleteFile = (id) => apiClient.delete(`/files/${id}`);
-
-// Version endpoints
-const createVersion = (versionData) => apiClient.post('/versions', versionData);
-const getVersionsByPageId = (pageId) => apiClient.get(`/versions/page/${pageId}`);
-const getVersion = (id) => apiClient.get(`/versions/${id}`);
-const restoreVersion = (id) => apiClient.post(`/versions/${id}/restore`);
-
-// Search endpoint
-const searchWiki = (query) => apiClient.get(`/search?q=${encodeURIComponent(query)}`);
-
-// Export all API functions
-const api = {
-  // Auth
-  registerUser,
-  loginUser,
-  getUserProfile,
-  
-  // Pages
-  getPages,
-  getPage,
-  createPage,
-  updatePage,
-  deletePage,
-  
-  // Files
-  uploadFile,
-  getFiles,
-  getFile,
-  deleteFile,
-  
-  // Versions
-  createVersion,
-  getVersionsByPageId,
-  getVersion,
-  restoreVersion,
-  
-  // Search
-  searchWiki,
+// Auth API endpoints
+export const authAPI = {
+  register: (userData) => apiClient.post('/auth/register', userData),
+  login: (credentials) => apiClient.post('/auth/login', credentials),
+  getUser: () => apiClient.get('/auth/user'),
 };
 
-export default api;
+// Page API endpoints
+export const pageAPI = {
+  getPages: (params) => apiClient.get(`/pages${params ? `?${params}` : ''}`),
+  getPage: (slug) => apiClient.get(`/pages/${slug}`),
+  createPage: (pageData) => apiClient.post('/pages', pageData),
+  updatePage: (slug, pageData) => apiClient.put(`/pages/${slug}`, pageData),
+  deletePage: (slug) => apiClient.delete(`/pages/${slug}`),
+};
+
+// Version API endpoints
+export const versionAPI = {
+  getVersionsByPageId: (pageId) => apiClient.get(`/versions/page/${pageId}`),
+  getVersion: (versionId) => apiClient.get(`/versions/${versionId}`),
+  restoreVersion: (versionId) => apiClient.post(`/versions/${versionId}/restore`),
+};
+
+// File API endpoints
+export const fileAPI = {
+  uploadFile: (formData) => apiClient.post('/files', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  getFiles: (params) => apiClient.get(`/files${params ? `?${params}` : ''}`),
+  deleteFile: (id) => apiClient.delete(`/files/${id}`),
+};
+
+// Search API endpoints
+export const searchAPI = {
+  search: (query) => apiClient.get(`/search?q=${encodeURIComponent(query)}`),
+};
+
+// Default export for backward compatibility
+export default apiClient;

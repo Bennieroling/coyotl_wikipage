@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WireGuard VPN Technical Design Document</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --bg-color: #ecf0f1;
+            --text-color: #2c3e50;
+            --border-color: #bdc3c7;
+            --code-bg: #f8f9fa;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 3rem 2rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: rotate 20s linear infinite;
+        }
+
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+
+        .content {
+            padding: 3rem 2rem;
+        }
+
+        .section {
+            margin-bottom: 3rem;
+            padding: 2rem;
+            border-left: 4px solid var(--secondary-color);
+            background: linear-gradient(135deg, rgba(52, 152, 219, 0.05), rgba(155, 89, 182, 0.05));
+            border-radius: 0 15px 15px 0;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .section:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .section h2 {
+            color: var(--primary-color);
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section h3 {
+            color: var(--secondary-color);
+            font-size: 1.4rem;
+            margin-bottom: 1rem;
+            margin-top: 2rem;
+        }
+
+        .icon {
+            width: 24px;
+            height: 24px;
+            background: var(--secondary-color);
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .code-block {
+            background: var(--code-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            overflow-x: auto;
+            position: relative;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .code-block::before {
+            content: 'CODE';
+            position: absolute;
+            top: 0.5rem;
+            right: 1rem;
+            font-size: 0.7rem;
+            color: #999;
+            font-weight: bold;
+        }
+
+        .highlight {
+            background: linear-gradient(120deg, rgba(255, 193, 7, 0.3) 0%, rgba(255, 193, 7, 0.1) 100%);
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .warning {
+            background: linear-gradient(135deg, rgba(243, 156, 18, 0.1), rgba(230, 126, 34, 0.1));
+            border-left: 4px solid var(--warning-color);
+            padding: 1rem;
+            border-radius: 0 8px 8px 0;
+            margin: 1rem 0;
+        }
+
+        .success {
+            background: linear-gradient(135deg, rgba(39, 174, 96, 0.1), rgba(46, 204, 113, 0.1));
+            border-left: 4px solid var(--success-color);
+            padding: 1rem;
+            border-radius: 0 8px 8px 0;
+            margin: 1rem 0;
+        }
+
+        .network-diagram {
+            background: white;
+            border: 2px solid var(--border-color);
+            border-radius: 15px;
+            padding: 2rem;
+            margin: 2rem 0;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .flow-item {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--secondary-color), #5dade2);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 25px;
+            margin: 0.5rem;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            transform: perspective(1000px) rotateX(0deg);
+            transition: transform 0.3s ease;
+        }
+
+        .flow-item:hover {
+            transform: perspective(1000px) rotateX(-10deg) translateY(-5px);
+        }
+
+        .arrow {
+            font-size: 2rem;
+            color: var(--secondary-color);
+            margin: 0 1rem;
+        }
+
+        ul, ol {
+            padding-left: 2rem;
+            margin: 1rem 0;
+        }
+
+        li {
+            margin: 0.5rem 0;
+            position: relative;
+        }
+
+        .config-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .config-table th {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 1rem;
+            text-align: left;
+            font-weight: bold;
+        }
+
+        .config-table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .config-table tr:nth-child(even) td {
+            background: rgba(52, 152, 219, 0.05);
+        }
+
+        .config-table tr:hover td {
+            background: rgba(52, 152, 219, 0.1);
+        }
+
+        .step-number {
+            background: var(--secondary-color);
+            color: white;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+            font-weight: bold;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 10px;
+            }
+            
+            .header {
+                padding: 2rem 1rem;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .content {
+                padding: 2rem 1rem;
+            }
+            
+            .section {
+                padding: 1.5rem;
+            }
+            
+            .flow-item {
+                display: block;
+                margin: 0.5rem 0;
+            }
+            
+            .arrow {
+                display: block;
+                transform: rotate(90deg);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 WireGuard VPN Technical Design</h1>
+            <p>Self-Hosted VPN Solution with Dynamic DNS & Global Access</p>
+        </div>
+
+        <div class="content">
+            <!-- Architecture Overview -->
+            <div class="section">
+                <h2><span class="icon">🏗</span>Architecture Overview</h2>
+                <p>This document describes a production-ready WireGuard VPN implementation that provides secure remote access to a home network with automatic dynamic DNS updates and robust connectivity.</p>
+                
+                <div class="network-diagram">
+                    <div class="flow-item">Client Device</div>
+                    <span class="arrow">→</span>
+                    <div class="flow-item">Internet</div>
+                    <span class="arrow">→</span>
+                    <div class="flow-item">festinalente.dev:51820</div>
+                    <span class="arrow">→</span>
+                    <div class="flow-item">Router (UDP Forward)</div>
+                    <span class="arrow">→</span>
+                    <div class="flow-item">Server (cholula)</div>
+                    <span class="arrow">→</span>
+                    <div class="flow-item">Home Network</div>
+                </div>
+
+                <div class="success">
+                    <strong>Key Benefits:</strong> Global access, dynamic IP resilience, encrypted tunnel, home network integration, automatic failover
+                </div>
+            </div>
+
+            <!-- Network Configuration -->
+            <div class="section">
+                <h2><span class="icon">🌐</span>Network Configuration</h2>
+                
+                <table class="config-table">
+                    <thead>
+                        <tr>
+                            <th>Component</th>
+                            <th>Address/Config</th>
+                            <th>Purpose</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Server (cholula)</strong></td>
+                            <td>192.168.1.53 / 10.0.0.1</td>
+                            <td>WireGuard server, internal services</td>
+                        </tr>
+                        <tr>
+                            <td><strong>VPN Network</strong></td>
+                            <td>10.0.0.0/24</td>
+                            <td>Isolated VPN subnet</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Home Network</strong></td>
+                            <td>192.168.1.0/24</td>
+                            <td>Local devices and services</td>
+                        </tr>
+                        <tr>
+                            <td><strong>WireGuard Port</strong></td>
+                            <td>UDP 51820</td>
+                            <td>VPN tunnel endpoint</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Domain</strong></td>
+                            <td>festinalente.dev</td>
+                            <td>Dynamic DNS for server access</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Server Setup -->
+            <div class="section">
+                <h2><span class="icon">⚙️</span>Server Configuration</h2>
+
+                <h3>1. WireGuard Installation</h3>
+                <div class="code-block">sudo apt update && sudo apt install wireguard</div>
+
+                <h3>2. Server Configuration File</h3>
+                <p>Location: <span class="highlight">/etc/wireguard/wg0.conf</span></p>
+                <div class="code-block">[Interface]
+Address = 10.0.0.1/24
+ListenPort = 51820
+PrivateKey = [SERVER_PRIVATE_KEY]
+
+# Firewall rules for VPN traffic (ensure full commands are on one line)
+PostUp = iptables -A FORWARD -i wg0 -j ACCEPT; \
+         iptables -A FORWARD -o wg0 -j ACCEPT; \
+         iptables -t nat -A POSTROUTING -o wlp1s0 -j MASQUERADE
+PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; \
+           iptables -D FORWARD -o wg0 -j ACCEPT; \
+           iptables -t nat -D POSTROUTING -o wlp1s0 -j MASQUERADE
+
+[Peer]
+PublicKey = [CLIENT_PUBLIC_KEY]
+AllowedIPs = 10.0.0.2/32</div>
+
+                <div class="warning">
+                    <strong>Important:</strong> Replace <code>wlp1s0</code> with your actual network interface name. Use <code>ip route | grep default</code> to find it.
+                </div>
+
+                <h3>3. Enable IP Forwarding</h3>
+                <div class="code-block">echo 'net.ipv4.ip_forward = 1' | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p</div>
+
+                <h3>4. Service Management</h3>
+                <div class="code-block">sudo systemctl enable wg-quick@wg0
+sudo systemctl start wg-quick@wg0
+sudo systemctl status wg-quick@wg0</div>
+            </div>
+
+            <!-- Firewall Configuration -->
+            <div class="section">
+                <h2><span class="icon">🛡️</span>Firewall Configuration for WireGuard</h2>
+
+                <div class="warning">
+                    <strong>Important:</strong> WireGuard requires specific firewall rules to function properly. Without these rules, VPN clients won't be able to connect or access network resources.
+                </div>
+
+                <h3>Required UFW Rules</h3>
+                <div class="code-block"># Allow WireGuard port
+sudo ufw allow 51820/udp
+
+# Allow VPN clients to access server services
+sudo ufw allow from 10.0.0.0/24
+
+# Allow VPN clients to access home network (optional)
+sudo ufw allow from 10.0.0.0/24 to 192.168.1.0/24
+
+# Allow SSH from VPN network
+sudo ufw allow from 10.0.0.0/24 to any port 22</div>
+
+                <h3>VPN Traffic Forwarding Rules</h3>
+                <p>Add these rules to allow traffic forwarding between VPN and local network:</p>
+                <div class="code-block"># Edit UFW forwarding rules
+sudo nano /etc/ufw/before.rules
+
+# Add these lines at the top (after header comments):
+# Allow forwarding for WireGuard
+-A ufw-before-forward -i wg0 -j ACCEPT
+-A ufw-before-forward -o wg0 -j ACCEPT
+
+# For older interface names, also add:
+-A ufw-before-forward -i wg0 -o eth0 -j ACCEPT
+-A ufw-before-forward -i eth0 -o wg0 -j ACCEPT
+-A ufw-before-forward -i wg0 -o eno1 -j ACCEPT
+-A ufw-before-forward -i eno1 -o wg0 -j ACCEPT</div>
+
+                <h3>Enable IP Forwarding in UFW</h3>
+                <div class="code-block"># Edit UFW sysctl configuration
+sudo nano /etc/ufw/sysctl.conf
+
+# Uncomment or add this line:
+net/ipv4/ip_forward=1</div>
+
+                <h3>Apply Firewall Changes</h3>
+                <div class="code-block"># Restart UFW to apply changes
+sudo ufw disable
+sudo ufw enable
+
+# Verify rules are active
+sudo ufw status verbose</div>
+
+                <h3>Verification</h3>
+                <p>After configuring firewall rules, verify WireGuard connectivity:</p>
+                <div class="code-block"># Check VPN connection
+sudo wg show
+
+# Test from VPN client
+ping 10.0.0.1                    # Server VPN IP
+ping 192.168.1.1                 # Home router
+ssh user@10.0.0.1               # SSH through VPN</div>
+
+                <div class="success">
+                    <strong>Expected UFW Status:</strong> You should see rules allowing UDP 51820, VPN network access (10.0.0.0/24), and forwarding rules between wg0 and your network interfaces.
+                </div>
+            </div>
+            <div class="section">
+                <h2><span class="icon">📡</span>Router Configuration</h2>
+                
+                <h3>Port Forwarding Rule</h3>
+                <table class="config-table">
+                    <thead>
+                        <tr>
+                            <th>Setting</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Protocol</td>
+                            <td><strong>UDP</strong> (not TCP)</td>
+                        </tr>
+                        <tr>
+                            <td>External Port</td>
+                            <td>51820</td>
+                        </tr>
+                        <tr>
+                            <td>Internal IP</td>
+                            <td>192.168.1.53</td>
+                        </tr>
+                        <tr>
+                            <td>Internal Port</td>
+                            <td>51820</td>
+                        </tr>
+                        <tr>
+                            <td>Source IP</td>
+                            <td>Any/All (do not restrict)</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="warning">
+                    <strong>Critical:</strong> Do not restrict by source IP - client IPs change when connecting from different networks.
+                </div>
+            </div>
+
+            <!-- DNS Management -->
+            <div class="section">
+                <h2><span class="icon">🔄</span>Dynamic DNS Management</h2>
+
+                <h3>DNS Update Script</h3>
+                <p>Location: <span class="highlight">~/porkbun_ddns.sh</span></p>
+                <div class="code-block">#!/bin/bash
+DOMAIN="festinalente.dev"
+API_KEY="your_porkbun_api_key"
+SECRET_KEY="your_porkbun_secret_key"
+CURRENT_IP=$(curl -s ifconfig.me)
+
+# Update DNS records with current public IP
+declare -A RECORDS
+RECORDS["*"]="record_id_wildcard"
+RECORDS["@"]="record_id_root"
+
+for SUB in "${!RECORDS[@]}"; do
+    RECORD_ID=${RECORDS[$SUB]}
+    
+    # Delete existing record
+    curl -s -X POST "https://api.porkbun.com/api/json/v3/dns/delete/$DOMAIN/$RECORD_ID" \
+        -H "Content-Type: application/json" \
+        -d "{\"apikey\":\"$API_KEY\",\"secretapikey\":\"$SECRET_KEY\"}"
+    
+    # Recreate record with new IP
+    curl -s -X POST "https://api.porkbun.com/api/json/v3/dns/create/$DOMAIN" \
+        -H "Content-Type: application/json" \
+        -d "{\"apikey\":\"$API_KEY\",\"secretapikey\":\"$SECRET_KEY\",\"type\":\"A\",\"name\":\"$SUB\",\"content\":\"$CURRENT_IP\",\"ttl\":\"600\"}"
+done</div>
+
+                <h3>Automated Execution</h3>
+                <div class="code-block"># Add to crontab
+crontab -e
+
+# Add this line (runs every 10 minutes)
+*/10 * * * * ~/porkbun_ddns.sh >/dev/null 2>&1</div>
+
+                <h3>Internal Service Configuration</h3>
+                <p>Location: <span class="highlight">~/update_internal_configs.sh</span></p>
+                <div class="code-block">#!/bin/bash
+INTERNAL_IP="192.168.1.53"
+
+echo "$(date): Updating internal service configurations with IP: $INTERNAL_IP"
+
+# Update Grafana Prometheus data source to use internal IP
+echo "Updating Grafana Prometheus data source..."
+GRAFANA_RESPONSE=$(curl -s -X PUT "http://localhost:3001/api/datasources/1" \
+    -H "Content-Type: application/json" \
+    -u "admin:password" \
+    -d "{
+        \"id\": 1,
+        \"uid\": \"datasource_uid\",
+        \"orgId\": 1,
+        \"name\": \"prometheus\",
+        \"type\": \"prometheus\",
+        \"access\": \"proxy\",
+        \"url\": \"http://$INTERNAL_IP:3002\",
+        \"isDefault\": true,
+        \"jsonData\": {\"httpMethod\": \"POST\"}
+    }")
+
+echo "Grafana update response: $GRAFANA_RESPONSE"
+echo "$(date): Internal config update completed"</div>
+
+                <div class="code-block"># Run on system boot
+crontab -e
+
+# Add this line
+@reboot ~/update_internal_configs.sh >> /var/log/internal-config-update.log 2>&1</div>
+            </div>
+
+            <!-- Adding New Clients -->
+            <div class="section">
+                <h2><span class="icon">👥</span>Adding New Client Devices</h2>
+
+                <h3>Step-by-Step Client Setup</h3>
+
+                <h4><span class="step-number">1</span>Generate Client Keys</h4>
+                <div class="code-block"># On the server
+wg genkey | tee client_new.key | wg pubkey > client_new.pub
+
+# Display the keys
+echo "Client private key:"
+cat client_new.key
+echo "Client public key:"
+cat client_new.pub</div>
+
+                <h4><span class="step-number">2</span>Update Server Configuration</h4>
+                <div class="code-block"># Edit server config
+sudo nano /etc/wireguard/wg0.conf
+
+# Add new peer (assign next available IP, e.g., 10.0.0.3)
+[Peer]
+PublicKey = [NEW_CLIENT_PUBLIC_KEY]
+AllowedIPs = 10.0.0.3/32
+
+# Restart WireGuard
+sudo systemctl restart wg-quick@wg0</div>
+
+                <h4><span class="step-number">3</span>Install WireGuard on Client</h4>
+                <ul>
+                    <li><strong>Windows:</strong> Download from <a href="https://www.wireguard.com/install/">wireguard.com</a></li>
+                    <li><strong>macOS:</strong> Install from Mac App Store</li>
+                    <li><strong>iOS/Android:</strong> Install from respective app stores</li>
+                    <li><strong>Linux:</strong> <code>sudo apt install wireguard</code></li>
+                </ul>
+
+                <h4><span class="step-number">4</span>Create Client Configuration</h4>
+                <div class="code-block">[Interface]
+PrivateKey = [CLIENT_PRIVATE_KEY_FROM_STEP_1]
+Address = 10.0.0.3/24
+DNS = 8.8.8.8
+
+[Peer]
+PublicKey = T6l4m7v7iluuhj8bgpGhsEvWCGXZKkcFysTrgW8gZEc=
+Endpoint = festinalente.dev:51820
+AllowedIPs = 10.0.0.1/32, 192.168.1.0/24
+PersistentKeepalive = 25</div>
+
+                <div class="success">
+                    <strong>For full internet routing:</strong> Change <code>AllowedIPs</code> to <code>0.0.0.0/0</code> to route all traffic through VPN.
+                </div>
+
+                <h4><span class="step-number">5</span>Import and Test</h4>
+                <ol>
+                    <li>Import the configuration file into WireGuard client</li>
+                    <li>Activate the tunnel</li>
+                    <li>Test connectivity: <code>ping 10.0.0.1</code></li>
+                    <li>Test SSH: <code>ssh user@10.0.0.1</code></li>
+                    <li>Test home network access: <code>ping 192.168.1.1</code></li>
+                </ol>
+            </div>
+
+            <!-- Troubleshooting -->
+            <div class="section">
+                <h2><span class="icon">🔧</span>Troubleshooting Guide</h2>
+
+                <h3>Common Connection Issues</h3>
+
+                <h4>1. Client Can't Connect</h4>
+                <div class="code-block"># Check server status
+sudo systemctl status wg-quick@wg0
+sudo wg show
+
+# Check port forwarding
+sudo netstat -unlp | grep 51820
+
+# Monitor connection attempts
+sudo tcpdump -i [interface] port 51820 -v</div>
+
+                <h4>2. Connected But Can't Ping</h4>
+                <div class="code-block"># Check IP forwarding
+cat /proc/sys/net/ipv4/ip_forward
+
+# Check iptables rules
+sudo iptables -L -n -v | grep wg0
+sudo iptables -t nat -L -n -v | grep MASQUERADE</div>
+
+                <h4>3. DNS Resolution Issues</h4>
+                <div class="code-block"># Test domain resolution
+nslookup festinalente.dev
+
+# Check current public IP
+curl ifconfig.me
+
+# Test direct IP connection
+nc -u -v [public_ip] 51820</div>
+
+                <h3>Verification Commands</h3>
+                <div class="code-block"># Server verification
+sudo wg show                    # Show active connections
+sudo journalctl -u wg-quick@wg0 # Check service logs
+ip addr show wg0               # Verify interface
+
+# Client verification
+ifconfig | grep 10.0.0         # Check VPN IP assignment
+ping 10.0.0.1                  # Test server connectivity
+traceroute 10.0.0.1            # Check routing path</div>
+            </div>
+
+            <!-- Security Considerations -->
+            <div class="section">
+                <h2><span class="icon">🔒</span>Security Considerations</h2>
+
+                <ul>
+                    <li><strong>Key Management:</strong> Store private keys securely, never share them</li>
+                    <li><strong>Firewall Rules:</strong> Only allow necessary ports (51820 UDP)</li>
+                    <li><strong>Regular Updates:</strong> Keep WireGuard and system packages updated</li>
+                    <li><strong>Access Control:</strong> Use AllowedIPs to restrict client network access</li>
+                    <li><strong>Monitoring:</strong> Regularly check connection logs and active peers</li>
+                    <li><strong>Backup:</strong> Securely backup server configuration and keys</li>
+                </ul>
+
+                <div class="warning">
+                    <strong>Security Note:</strong> This setup provides secure remote access but ensure your home network devices are properly secured as they become accessible through the VPN.
+                </div>
+            </div>
+
+            <!-- Maintenance -->
+            <div class="section">
+                <h2><span class="icon">⚡</span>Maintenance & Operations</h2>
+
+                <h3>Regular Maintenance Tasks</h3>
+                <ul>
+                    <li>Monitor VPN connection logs weekly</li>
+                    <li>Update DNS records if ISP changes</li>
+                    <li>Review and rotate client keys annually</li>
+                    <li>Test backup connectivity methods</li>
+                    <li>Verify router port forwarding after firmware updates</li>
+                </ul>
+
+                <h3>Performance Monitoring</h3>
+                <div class="code-block"># Monitor connection stats
+sudo wg show all
+
+# Check bandwidth usage
+sudo vnstat -i wg0
+
+# Monitor system resources
+htop
+iostat -x 1 5</div>
+
+                <div class="success">
+                    <strong>Success Metrics:</strong> Sub-100ms latency, >90% uptime, automatic reconnection, secure key exchange, proper traffic routing through home network.
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
